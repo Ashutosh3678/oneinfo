@@ -1,0 +1,6 @@
+shortCode,creatorId,orderId,productName,orderValue,category
+abc123,creator1,CSV001,Shoes,2000,fashion
+abc123,creator1,CSV002,Bag,1500,fashion
+abc123,creator1,CSV003,Tshirt,800,fashion  
+
+
