@@ -123,20 +123,15 @@ app.use("/graphql", apiLimiter, authMiddleware);
 app.use(errorMiddleware);
 
 /* ============================================================
-   START CRON JOBS
-============================================================ */
-require("./src/cron/admitad.cron");
-
-/* ============================================================
    START SERVER — listen immediately so Railway healthcheck passes,
-   then connect DB + GraphQL in the background
+   then connect DB + GraphQL + crons in the background
 ============================================================ */
 const PORT = process.env.PORT || 4000;
 
 (async () => {
   // 1. Start listening RIGHT AWAY — /health is already wired above
   await new Promise((resolve) => {
-    app.listen(PORT, () => {
+    app.listen(PORT, "0.0.0.0", () => {
       logger.info("Server listening", {
         port: PORT,
         environment: process.env.NODE_ENV,
@@ -145,15 +140,23 @@ const PORT = process.env.PORT || 4000;
     });
   });
 
-  // 2. Now connect DB + setup GraphQL
+  // 2. Connect DB + setup GraphQL
   try {
     await connectDB();
     await setupGraphQL(app);
     isReady = true;
     logger.info("Server fully ready");
   } catch (err) {
-    logger.error("Startup failed after listen", { message: err.message });
+    logger.error("DB/GraphQL startup failed", { message: err.message });
     process.exit(1);
+  }
+
+  // 3. Start cron jobs AFTER server is ready (so Redis errors don't prevent listen)
+  try {
+    require("./src/cron/admitad.cron");
+    logger.info("Cron jobs started");
+  } catch (err) {
+    logger.error("Cron startup failed (non-fatal)", { message: err.message });
   }
 })();
 
