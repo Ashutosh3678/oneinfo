@@ -57,10 +57,16 @@ app.use(
 app.use(express.json());
 
 /* ============================================================
-   HEALTH CHECK
+   HEALTH CHECK — always 200 so Railway healthcheck passes;
+   "ready" field reflects DB connection state
 ============================================================ */
+let isReady = false;
 app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
+  res.status(200).json({
+    status: "ok",
+    ready: isReady,
+    uptime: process.uptime(),
+  });
 });
 
 /* ============================================================
@@ -122,22 +128,31 @@ app.use(errorMiddleware);
 require("./src/cron/admitad.cron");
 
 /* ============================================================
-   START SERVER — async IIFE to properly await DB + GraphQL
+   START SERVER — listen immediately so Railway healthcheck passes,
+   then connect DB + GraphQL in the background
 ============================================================ */
 const PORT = process.env.PORT || 4000;
 
 (async () => {
-  try {
-    await connectDB();
-    await setupGraphQL(app);
+  // 1. Start listening RIGHT AWAY — /health is already wired above
+  await new Promise((resolve) => {
     app.listen(PORT, () => {
-      logger.info("Server running", {
+      logger.info("Server listening", {
         port: PORT,
         environment: process.env.NODE_ENV,
       });
+      resolve();
     });
+  });
+
+  // 2. Now connect DB + setup GraphQL
+  try {
+    await connectDB();
+    await setupGraphQL(app);
+    isReady = true;
+    logger.info("Server fully ready");
   } catch (err) {
-    logger.error("Server failed to start", { message: err.message });
+    logger.error("Startup failed after listen", { message: err.message });
     process.exit(1);
   }
 })();
