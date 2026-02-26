@@ -38,7 +38,22 @@ app.set("trust proxy", 1);
 ============================================================ */
 app.use(helmet());
 const cors = require("cors");
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+const allowedOrigins = (process.env.FRONTEND_URL || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (process.env.NODE_ENV !== "production") return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin '${origin}' not allowed`));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 /* ============================================================
@@ -49,12 +64,14 @@ app.get("/health", (req, res) => {
 });
 
 /* ============================================================
-   DEV TOKEN ROUTE (REMOVE IN PRODUCTION)
+   DEV TOKEN ROUTE (only available outside production)
 ============================================================ */
-app.get("/dev/token/:creatorId", (req, res) => {
-  const token = signToken(req.params.creatorId);
-  res.json({ token });
-});
+if (process.env.NODE_ENV !== "production") {
+  app.get("/dev/token/:creatorId", (req, res) => {
+    const token = signToken(req.params.creatorId);
+    res.json({ token });
+  });
+}
 
 /* ============================================================
    ADMIN ROUTES (Rate Limited)
