@@ -38,15 +38,14 @@ app.set("trust proxy", 1);
 ============================================================ */
 app.use(helmet());
 const cors = require("cors");
-const allowedOrigins = (process.env.FRONTEND_URL || "")
-  .split(",")
-  .map((o) => o.trim())
-  .filter(Boolean);
-app.use(cors({
-  origin: [
+const allowedOrigins = [
     "http://localhost:5173",
-    process.env.FRONTEND_URL
-  ],
+    "https://www.oneinfo-production.up.railway.app",
+    "https://oneinfo-production.up.railway.app",
+    "https://affiliate-frontend-jade.vercel.app",
+];
+app.use(cors({
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());
