@@ -42,18 +42,13 @@ const allowedOrigins = (process.env.FRONTEND_URL || "")
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, server-to-server)
-      if (!origin) return callback(null, true);
-      if (process.env.NODE_ENV !== "production") return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      callback(new Error(`CORS: origin '${origin}' not allowed`));
-    },
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    process.env.FRONTEND_URL
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 /* ============================================================
